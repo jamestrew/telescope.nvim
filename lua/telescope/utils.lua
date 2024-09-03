@@ -5,7 +5,7 @@
 --- Utilities for writing telescope pickers
 ---@brief ]]
 
-local Path = require "plenary.path"
+local Path = require "plenary.path2"
 local Job = require "plenary.job"
 
 local log = require "telescope.log"

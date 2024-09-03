@@ -37,7 +37,7 @@
 local entry_display = require "telescope.pickers.entry_display"
 local utils = require "telescope.utils"
 local strings = require "plenary.strings"
-local Path = require "plenary.path"
+local Path = require "plenary.path2"
 
 local treesitter_type_highlight = {
   ["associated"] = "TSConstant",
@@ -625,7 +625,7 @@ function make_entry.gen_from_buffer(opts)
 
   return function(entry)
     local filename = entry.info.name ~= "" and entry.info.name or nil
-    local bufname = filename and Path:new(filename):normalize(cwd) or "[No Name]"
+    local bufname = filename and Path:new(filename):make_relative(cwd, true) or "[No Name]"
 
     local hidden = entry.info.hidden == 1 and "h" or "a"
     local readonly = vim.api.nvim_buf_get_option(entry.bufnr, "readonly") and "=" or " "
@@ -1026,7 +1026,7 @@ function make_entry.gen_from_ctags(opts)
   opts = opts or {}
 
   local cwd = utils.path_expand(opts.cwd or vim.loop.cwd())
-  local current_file = Path:new(vim.api.nvim_buf_get_name(opts.bufnr)):normalize(cwd)
+  local current_file = Path:new(vim.api.nvim_buf_get_name(opts.bufnr)):make_relative(cwd)
 
   local display_items = {
     { remaining = true },
@@ -1111,7 +1111,7 @@ function make_entry.gen_from_ctags(opts)
 
     if opts.only_current_file then
       if current_file_cache[file] == nil then
-        current_file_cache[file] = Path:new(file):normalize(cwd) == current_file
+        current_file_cache[file] = Path:new(file):make_relative(cwd, true) == current_file
       end
 
       if current_file_cache[file] == false then
