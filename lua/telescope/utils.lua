@@ -305,32 +305,72 @@ utils.is_path_hidden = function(opts, path_display)
     or type(path_display) == "table" and (vim.tbl_contains(path_display, "hidden") or path_display.hidden)
 end
 
+--- WARNING: Should really avoid using this. It's more like
+--- `maybe_uri_maybe_not`. There are both false positives and false negative
+--- edge cases.
+---
+--- Approximates if a filename is a valid URI by checking if the filename
+--- starts with a plausible scheme.
+---
+--- A valid URI scheme begins with a letter, followed by any number of letters,
+--- numbers and `+`, `.`, `-` and ends with a `:`.
+---
+--- To disambiguate URI schemes from Windows path, we also check up to 2
+--- characters after the `:` to make sure it's followed by `//`.
+---
+--- Two major caveats according to our checks:
+--- - a "valid" URI is also a valid unix relative path so any relative unix
+---   path that's in the shape of a URI according to our check will be flagged
+---   as a URI.
+--- - relative Windows paths like `C:Projects/apilibrary/apilibrary.sln` will
+---   be caught as a URI.
+---
+---@param filename string
+---@return boolean
 utils.is_uri = function(filename)
-  local char = string.byte(filename, 1) or 0
+  local ch = filename:byte(1) or 0
 
-  -- is alpha?
-  if char < 65 or (char > 90 and char < 97) or char > 122 then
+  -- is not alpha?
+  if not ((ch >= 97 and ch <= 122) or (ch >= 65 and ch <= 90)) then
     return false
   end
 
+  local scheme_end = 0
   for i = 2, #filename do
-    char = string.byte(filename, i)
-    if char == 58 then -- `:`
-      return i < #filename and string.byte(filename, i + 1) ~= 92 -- `\`
-    elseif
-      not (
-        (char >= 48 and char <= 57) -- 0-9
-        or (char >= 65 and char <= 90) -- A-Z
-        or (char >= 97 and char <= 122) -- a-z
-        or char == 43 -- `+`
-        or char == 46 -- `.`
-        or char == 45 -- `-`
-      )
-    then
+    ch = filename:byte(i)
+    if
+      (ch >= 97 and ch <= 122) -- a-z
+      or (ch >= 65 and ch <= 90) -- A-Z
+      or (ch >= 48 and ch <= 57) -- 0-9
+      or ch == 43 -- `+`
+      or ch == 46 -- `.`
+      or ch == 45 -- `-`
+    then -- luacheck: ignore 542
+      -- pass
+    elseif ch == 58 then
+      scheme_end = i
+      break
+    else
       return false
     end
   end
-  return false
+
+  if scheme_end == 0 then
+    return false
+  end
+
+  local next = filename:byte(scheme_end + 1) or 0
+  if next == 0 then
+    -- nothing following the scheme
+    return false
+  elseif next == 92 then -- `\`
+    -- could be Windows absolute path but not a uri
+    return false
+  elseif next == 47 and (filename:byte(scheme_end + 2) or 0) ~= 47 then -- `/`
+    -- still could be Windows absolute path using `/` seps but not a uri
+    return false
+  end
+  return true
 end
 
 --- Transform path is a util function that formats a path based on path_display

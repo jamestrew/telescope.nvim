@@ -86,6 +86,11 @@ describe("is_uri", function()
     local inputs = {
       "hello",
       "hello:",
+      "C:",
+      "C:/",
+      [[C:\]],
+      "C:/Users/a",
+      [[C:\Users\a]],
       "123",
       "",
     }
